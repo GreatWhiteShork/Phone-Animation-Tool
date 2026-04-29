@@ -5,11 +5,11 @@
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/addons/p5.sound.min.js"></script>
     
     <script>
-      (function() {
-        document.querySelector("body").requestFullscreen().then(() => {document.querySelector("body").style.overflow = "auto"; });
-      })();
-      
-      
+      window.addEventListener("load", function() {
+        setTimeout(function() {
+          window.scrollTo(0, 1);
+        }, 0);
+      });
     </script>
     
     <link rel="stylesheet" type="text/css" href="style.css">
