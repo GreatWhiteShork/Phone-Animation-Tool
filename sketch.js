@@ -60,16 +60,19 @@ function draw() {
 
 function touchStarted() {
   checkPrevNextButton();
+  return false;
 }
 
 function touchMoved() {
   if ( mouseY >= windowHeight/2 - 200 )  currentPath.push({x: mouseX, y: mouseY});
+  return false;
 }
 
 function touchEnded() {
   if ( mouseY >= windowHeight/2 - 200 ) layers[curLayer][curFrame].push(currentPath);
   currentPath = [];
   // console.log(layers[curLayer][curFrame])
+  return false;
 }
 
 // ~~ HELPERS
