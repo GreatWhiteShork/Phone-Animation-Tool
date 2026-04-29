@@ -58,18 +58,18 @@ function draw() {
   drawHighlights();
 }
 
-function mousePressed() {
+function touchStarted() {
   checkPrevNextButton();
 }
 
-function mouseDragged() {
+function touchMoved() {
   if ( mouseY >= windowHeight/2 - 200 )  currentPath.push({x: mouseX, y: mouseY});
 }
 
-function mouseReleased() {
+function touchEnded() {
   if ( mouseY >= windowHeight/2 - 200 ) layers[curLayer][curFrame].push(currentPath);
   currentPath = [];
-  console.log(layers[curLayer][curFrame])
+  // console.log(layers[curLayer][curFrame])
 }
 
 // ~~ HELPERS
