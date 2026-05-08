@@ -21,18 +21,23 @@
 // [] A way to clear frames
 // [] A way to duplicate frames
 // [] A way to delete frames
-// Prevent drawings outside of canvas
-// Include layers
-// Make the playback delay at the end slightly
-// Oh, undo
+// [] Prevent drawings outside of canvas
+// [] Include layers
+// [] Make the playback delay at the end slightly
+// [] Oh, undo
 // [] Include Onion Skin on the micro drawing?
+// Quick-scrub by pressing and scrolling on preview
+// [] Thinner strokes?
+// Oh lol, export button
 
 
 p5.disableFriendlyErrors = true;
 
 var app = {
   onion: true,
-  clipboard: []
+  clipboard: [],
+  strokeWeight: 5,
+  scrubbing: false
 }
 
 
@@ -52,8 +57,8 @@ var canvasWidth, canvasHeight;
 function setup() {
   canvasWidth = 400;
   canvasHeight = 800;
-  canvasWidth = windowWidth;
-  canvasHeight = windowHeight;
+  // canvasWidth = windowWidth;
+  // canvasHeight = windowHeight;
   createCanvas(canvasWidth, canvasHeight);
   // console.log(layers[curLayer][curFrame])
 }
@@ -66,41 +71,61 @@ function draw() {
 
   drawUI();
   drawCurrentFrame(curFrame, false, -1);
-  drawHighlights();
+  // drawHighlights();
 }
 
 function touchStarted() {
+  checkScrubbing();
   checkPrevNextButton();
   checkLayerChangeButton();
+  checkUndo();
   return false;
 }
 
 function touchMoved() {
   if ( mouseY >= canvasHeight/2 - 200  && mouseY <= canvasHeight/2 + 200  )  currentPath.push({x: mouseX, y: mouseY});
+  if ( app.scrubbing ) {
+    // (mouseX - canvasWidth/2) /
+  }
   return false;
 }
 
 function touchEnded() {
   if ( mouseY >= canvasHeight/2 - 200 && mouseY <= canvasHeight/2 + 200 ) layers[curLayer][curFrame].push(currentPath);
   currentPath = [];
+  if ( app.scrubbing ) app.scrubbing = false;
   return false;
 }
 
 // ~~ HELPERS
 
+function checkScrubbing() {
+  if ( mouseX <= canvasWidth/2 - 40 || mouseX >= canvasWidth/2 + 40) app.scrubbing = false;
+  if ( mouseY <= canvasHeight/2 - 90 || mouseY >= canvasHeight/2 - 10 ) app.scrubbing = false;
+  app.scrubbing = true;
+}
+
+function checkUndo() {
+  
+  if ( mouseY < canvasHeight/2 + 310 || mouseY > canvasHeight/2 + 360 ) return;
+  if ( mouseX < canvasWidth / 2 - 180 || mouseX > canvasWidth / 2 - 115 ) return;
+  
+  if ( layers[curLayer][curFrame].length ) layers[curLayer][curFrame].pop();
+}
+
 function checkLayerChangeButton() {
   // Ugh, just gonna hard-code this for a bit
+  if ( mouseY < canvasHeight/2 + 210 || mouseY > canvasHeight/2 + 290 ) return;
   
-  if ( mouseY < 610 || mouseY > 690 ) return;
+  if ( mouseX < canvasWidth/2 - 200 + 10 || mouseX >= canvasWidth/2 + 200 - 10 ) return;
   
-  if ( mouseX < 10 || mouseX > 390 ) return;
-  else if ( mouseX >= 10 && mouseX <= 90 ) {
+  else if ( mouseX >= canvasWidth/2 - 200 + 10 && mouseX <= canvasWidth/2 - 200 + 90 ) {
     curLayer = 0;
-  } else if ( mouseX >= 110 && mouseX <= 190 ) {
+  } else if ( mouseX >= canvasWidth/2 - 200 + 110 && mouseX <= canvasWidth/2 - 200 + 190 ) {
     curLayer = 1;
-  } else if ( mouseX >= 210 && mouseX <= 290 ) {
+  } else if ( mouseX >= canvasWidth/2 - 200 + 210 && mouseX <= canvasWidth/2 - 200 + 290 ) {
     curLayer = 2;
-  } else if ( mouseX >= 310 && mouseX <= 390 ) {
+  } else if ( mouseX >= canvasWidth/2 - 200 + 310 && mouseX <= canvasWidth/2 - 200 + 390 ) {
     curLayer = 3;
   }
   if ( layers[curLayer] == undefined ) {
@@ -192,7 +217,7 @@ function drawHighlights() {
   stroke(255);
   strokeWeight(2);
   var extraLift = 25;
-  if ( mouseY < canvasHeight/2 - 200 && mouseY > canvasHeight/2 - 250 - extraLift) {
+  if ( mouseY < canvasHeight/2 - 200 && mouseY > canvasHeight/2 - 250 - extraLift ) {
     
     if ( mouseX >= canvasWidth/2 - 200 && mouseX <= canvasWidth/2 - 150  ) {
       rect(canvasWidth/2 - 200, canvasHeight/2 - 250 - extraLift,50, 50)
@@ -321,10 +346,12 @@ function drawUI() {
 
   var framerate = 8;
   var fps = 1000 / 8;
-  var renderThisFrame = Math.floor((millis() / fps ) % layers[curLayer].length);
- // renderThisFrame = 0;
- // console.log(millis() / 1000 * 12 )
-  if ( mouseIsPressed ) renderThisFrame = curFrame;
+  var renderThisFrame = Math.floor((millis() / fps ) % ( layers[curLayer].length + 3) ) ;
+  if ( mouseIsPressed ) {
+    renderThisFrame = curFrame;
+  } else {
+    renderThisFrame = Math.min(layers[curLayer].length-1, renderThisFrame) 
+  }
   
   push();
   translate(canvasWidth/2, canvasHeight/2);
@@ -338,7 +365,7 @@ function drawUI() {
   pop();
   
   
-  // One per layer. 3 or 4 layers?
+  // Layers
   push();
   translate(canvasWidth/2, canvasHeight/2);
   scale(0.2);
@@ -361,7 +388,21 @@ function drawUI() {
   }
   pop();
 
+  // Undo
+  noFill();
+  strokeWeight(5);
+  if ( layers[curLayer][curFrame].length == 0 ) {
+    stroke(120);
+  } else {
+    stroke(0);
+  }
+  line(canvasWidth / 2 - 180, canvasHeight / 2 + 350, canvasWidth / 2 - 130, canvasHeight / 2 + 350 );
+  line(canvasWidth / 2 - 160, canvasHeight / 2 + 320, canvasWidth / 2 - 130, canvasHeight / 2 + 320 );
+  arc(canvasWidth / 2 - 130, canvasHeight / 2 + 335, 30, 30, -HALF_PI, HALF_PI);
+  line(canvasWidth / 2 - 160, canvasHeight / 2 + 320, canvasWidth / 2 - 150, canvasHeight / 2 + 310 );
+  line(canvasWidth / 2 - 160, canvasHeight / 2 + 320, canvasWidth / 2 - 150, canvasHeight / 2 + 330 );
   
+  // Export
 }
 
 function drawOnionSkin() {
@@ -378,7 +419,7 @@ function drawCurrentLayer(targFrame, targLayer) {
     for ( var i = 0, iL = theFrame.length; i < iL; i++ ) {
       
       stroke(0, 0, 0, 180 * 0.4 + (180/iL) * 0.6);
-      strokeWeight(20 * 0.6 +(20/iL) * 0.4 );
+      strokeWeight(app.strokeWeight * 0.6 +(20/iL) * 0.4 );
       
       var thisPath = theFrame[i];
       beginShape();
@@ -417,7 +458,7 @@ function drawCurrentFrame(targFrame, preview) {
   var currentFrameLength = layers[curLayer][targFrame].length;
   if ( currentFrameLength == 0 ) currentFrameLength = 1;
   stroke(0, 0, 0, 180 * 0.4 + (180/currentFrameLength) * 0.6);
-  strokeWeight(20 * 0.75 +(20/currentFrameLength) * 0.25 );
+  strokeWeight(app.strokeWeight * 0.75 +(20/currentFrameLength) * 0.25 );
   beginShape();
   for ( var c = 0, cL = currentPath.length-1; c < cL; c++ ) {
     curveVertex(currentPath[c].x, currentPath[c].y);
@@ -444,7 +485,7 @@ function drawCurrentFrame(targFrame, preview) {
     for ( var i = 0, iL = currentFrame.length; i < iL; i++ ) {
       
       stroke(r, g, b, a * 0.4 + (a/iL) * 0.6);
-      strokeWeight(20 * 0.6 +(20/iL) * 0.4 );
+      strokeWeight(app.strokeWeight * 0.6 +(20/iL) * 0.4 );
       
       var thisPath = currentFrame[i];
       beginShape();
