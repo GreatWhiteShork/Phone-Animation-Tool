@@ -18,12 +18,14 @@
 // [] Onion Skin?
 // Proper Playback?
 // [] A way to insert sub-frames 
+// [] A way to clear frames
+// [] A way to duplicate frames
 // [] A way to delete frames
-// A way to duplicate frames
 // Prevent drawings outside of canvas
 // Include layers
 // Make the playback delay at the end slightly
 // Oh, undo
+// [] Include Onion Skin on the micro drawing?
 
 
 p5.disableFriendlyErrors = true;
@@ -36,113 +38,152 @@ var app = {
 
 var layers = {};
 
-var curLayer = 1, curFrame = 0;
-  layers[curLayer] = [];
-  layers[curLayer][curFrame] = [];
+var curLayer = 0, curFrame = 0;
+for ( var i = 0; i < 4; i++ ) {
+  layers[i] = [];
+  layers[i][curFrame] = [];
+}
 
 var currentPath = [];
 
+var canvasWidth, canvasHeight;
 
-function setup() {   
-  createCanvas(windowWidth, windowHeight);
-  console.log(layers[curLayer][curFrame])
+
+function setup() {
+  canvasWidth = 400;
+  canvasHeight = 800;
+  canvasWidth = windowWidth;
+  canvasHeight = windowHeight;
+  createCanvas(canvasWidth, canvasHeight);
+  // console.log(layers[curLayer][curFrame])
 }
 
 function draw() {
+  // console.log(curLayer);
   background(150);
   fill(255); stroke(100); strokeWeight(1);
-  rect(windowWidth/2 - 200, windowHeight/2-200, 400);
+  rect(canvasWidth/2 - 200, canvasHeight/2-200, 400);
 
   drawUI();
-  drawCurrentFrame(curFrame, false);
+  drawCurrentFrame(curFrame, false, -1);
   drawHighlights();
 }
 
 function touchStarted() {
   checkPrevNextButton();
+  checkLayerChangeButton();
   return false;
 }
 
 function touchMoved() {
-  if ( mouseY >= windowHeight/2 - 200 )  currentPath.push({x: mouseX, y: mouseY});
+  if ( mouseY >= canvasHeight/2 - 200  && mouseY <= canvasHeight/2 + 200  )  currentPath.push({x: mouseX, y: mouseY});
   return false;
 }
 
 function touchEnded() {
-  if ( mouseY >= windowHeight/2 - 200 ) layers[curLayer][curFrame].push(currentPath);
+  if ( mouseY >= canvasHeight/2 - 200 && mouseY <= canvasHeight/2 + 200 ) layers[curLayer][curFrame].push(currentPath);
   currentPath = [];
-  // console.log(layers[curLayer][curFrame])
   return false;
 }
 
 // ~~ HELPERS
 
+function checkLayerChangeButton() {
+  // Ugh, just gonna hard-code this for a bit
+  
+  if ( mouseY < 610 || mouseY > 690 ) return;
+  
+  if ( mouseX < 10 || mouseX > 390 ) return;
+  else if ( mouseX >= 10 && mouseX <= 90 ) {
+    curLayer = 0;
+  } else if ( mouseX >= 110 && mouseX <= 190 ) {
+    curLayer = 1;
+  } else if ( mouseX >= 210 && mouseX <= 290 ) {
+    curLayer = 2;
+  } else if ( mouseX >= 310 && mouseX <= 390 ) {
+    curLayer = 3;
+  }
+  if ( layers[curLayer] == undefined ) {
+    layers[curLayer] = [];
+    layers[curLayer][curFrame] = [];
+  }
+  
+}
+
 function checkPrevNextButton() {
-  if ( mouseY < windowHeight/2 - 200 && mouseY > windowHeight/2 - 250) {
+  // Also needs to update other layers
+  
+  var extraLift = 25;
+  
+  // Prev and Next Buttons
+  if ( mouseY < canvasHeight/2 - 200 - extraLift && mouseY > canvasHeight/2 - 250 - extraLift) {
     
-    if ( mouseX >= windowWidth/2 - 200 && mouseX <= windowWidth/2 - 150  ) {
-      if ( --curFrame < 0 ) curFrame = 0;
-    } else if ( mouseX >= windowWidth/2 + 150 && mouseX <= windowWidth/2 + 200  ) {
-      if ( layers[curLayer][++curFrame] == undefined ) layers[curLayer][curFrame] = [];
+    if ( mouseX >= canvasWidth/2 - 200 && mouseX <= canvasWidth/2 - 150  ) {
+      curFrame--;
+      if ( curFrame < 0 ) curFrame = 0;
+    } else if ( mouseX >= canvasWidth/2 + 150 && mouseX <= canvasWidth/2 + 200  ) {
+      curFrame++;
+      // Do this for all layers.
+      // Current layer gets an empty frame.
+      // Other layers duplicate the previous frame.
+      for ( var c = 0; c < 4; c++ ) {
+        if ( c == curLayer ) {
+          if ( layers[c][curFrame] == undefined ) layers[c][curFrame] = [];
+        } else {
+          if ( layers[c][curFrame] == undefined ) layers[c][curFrame] = JSON.parse(JSON.stringify(layers[c][curFrame-1]));
+        }
+      }
     }
     
     
-    if ( mouseX >= windowWidth/2 - 125 && mouseX <= windowWidth/2 - 75  ) {
+    if ( mouseX >= canvasWidth/2 - 125 && mouseX <= canvasWidth/2 - 75  ) {
       // Insert frame before, move to it
-      console.log('insert before');
+      // console.log('insert before');
       if ( curFrame > 0 ) {
-        layers[curLayer].splice(curFrame, 0, []);
+        for ( var c = 0; c < 4; c++ ) {
+          if ( c == curLayer ) {
+            layers[curLayer].splice(curFrame, 0, []);
+          } else {
+            layers[c].splice(curFrame, 0, JSON.parse(JSON.stringify(layers[c][curFrame-1])));
+          }
+        }
+        // layers[curLayer].splice(curFrame, 0, []);
       }
       
       // if ( --curFrame < 0 ) curFrame = 0;
-    } else if ( mouseX >= windowWidth/2 + 75 && mouseX <= windowWidth/2 + 125  ) {
+    } else if ( mouseX >= canvasWidth/2 + 75 && mouseX <= canvasWidth/2 + 125  ) {
       // if ( layers[curLayer][++curFrame] == undefined ) layers[curLayer][curFrame] = [];
-      console.log("insert after");
+      // console.log("insert after");
       if ( curFrame < layers[curLayer].length - 1 ) {        
-        layers[curLayer].splice((curFrame++) + 1, 0, []);
+        for ( var c = 0; c < 4; c++ ) {
+          if ( c == curLayer ) {
+            layers[curLayer].splice((curFrame++) + 1, 0, []);
+          } else {
+            layers[c].splice((curFrame) + 1, 0, JSON.parse(JSON.stringify(layers[c][curFrame])));
+          }
+        }
+        // layers[curLayer].splice((curFrame++) + 1, 0, []);
       }
     }
   }
   
-  
-  if ( mouseY < windowHeight/2 - 300 && mouseY > windowHeight/2 - 340 && mouseX > windowWidth/2 - 20 && mouseX < windowWidth/2 + 20 ) {
+  // Delete Button
+  if ( mouseY < canvasHeight/2 - 300 - extraLift && mouseY > canvasHeight/2 - 340  - extraLift && mouseX > canvasWidth/2 - 20 && mouseX < canvasWidth/2 + 20 ) {
     layers[curLayer][curFrame] = [];
   }
   
   
-  
-  if ( mouseY < windowHeight/2 - 300 && mouseY > windowHeight/2 - 350 ) {
-    if ( mouseX >= windowWidth/2 - 100 && mouseX <= windowWidth/2 - 60 ) {
+  // Copy/Paste Buttons
+  if ( mouseY < canvasHeight/2 - 300 - extraLift&& mouseY > canvasHeight/2 - 350 - extraLift) {
+    if ( mouseX >= canvasWidth/2 - 100 && mouseX <= canvasWidth/2 - 60 ) {
       app.clipboard = layers[curLayer][curFrame];
     }
-    if ( mouseX >= windowWidth/2 + 60 && mouseX <= windowWidth/2 + 90 ) {
+    if ( mouseX >= canvasWidth/2 + 60 && mouseX <= canvasWidth/2 + 90 ) {
       layers[curLayer][curFrame] = app.clipboard;
     }
   }
   
   
-//   // Copy Button
-//   noFill();
-//   stroke(50); strokeWeight(1);
-//   if ( app.clipboard.length ) fill(100);
-//   beginShape();
-//   vertex(windowWidth/2 + 60, windowHeight/2 - 335);
-//   vertex(windowWidth/2 + 90, windowHeight/2 - 335);
-//   vertex(windowWidth/2 + 85, windowHeight/2 - 300);
-//   vertex(windowWidth/2 + 65, windowHeight/2 - 300);
-//   endShape(CLOSE);
-  
-//   rect(windowWidth/2 + 55, windowHeight/2 - 340, 40, 5, 2);
-//   rect(windowWidth/2 + 72, windowHeight/2 - 355, 5, 15, 2);
-  
-  
-//   // Paste Button
-//   noFill();
-//   stroke(50); strokeWeight(1);
-//   if ( app.clipboard.length ) fill(100);
-//   rect(windowWidth/2 - 100, windowHeight/2 - 350, 40, 50, 3);
-//   rect(windowWidth/2 - 95, windowHeight/2 - 343, 30, 40, 3);
-//   rect(windowWidth/2 - 90, windowHeight/2 - 353, 20, 6);
 }
 
 function drawHighlights() {
@@ -151,46 +192,46 @@ function drawHighlights() {
   stroke(255);
   strokeWeight(2);
   var extraLift = 25;
-  if ( mouseY < windowHeight/2 - 200 && mouseY > windowHeight/2 - 250 - extraLift) {
+  if ( mouseY < canvasHeight/2 - 200 && mouseY > canvasHeight/2 - 250 - extraLift) {
     
-    if ( mouseX >= windowWidth/2 - 200 && mouseX <= windowWidth/2 - 150  ) {
-      rect(windowWidth/2 - 200, windowHeight/2 - 250 - extraLift,50, 50)
-    } else if ( mouseX >= windowWidth/2 + 150 && mouseX <= windowWidth/2 + 200  ) {
-      rect(windowWidth/2 + 150, windowHeight/2 - 250 - extraLift,50, 50)
+    if ( mouseX >= canvasWidth/2 - 200 && mouseX <= canvasWidth/2 - 150  ) {
+      rect(canvasWidth/2 - 200, canvasHeight/2 - 250 - extraLift,50, 50)
+    } else if ( mouseX >= canvasWidth/2 + 150 && mouseX <= canvasWidth/2 + 200  ) {
+      rect(canvasWidth/2 + 150, canvasHeight/2 - 250 - extraLift,50, 50)
     }
     
     
-    if ( mouseX >= windowWidth/2 - 125 && mouseX <= windowWidth/2 - 75  ) {
+    if ( mouseX >= canvasWidth/2 - 125 && mouseX <= canvasWidth/2 - 75  ) {
       // Insert frame before, move to it
       // console.log('insert before');
       if ( curFrame > 0 ) {
         // layers[curLayer].splice(curFrame, 0, []);
-        rect(windowWidth/2 - 125, windowHeight/2 - 250 - extraLift,50, 50)
+        rect(canvasWidth/2 - 125, canvasHeight/2 - 250 - extraLift,50, 50)
       }
       
       // if ( --curFrame < 0 ) curFrame = 0;
-    } else if ( mouseX >= windowWidth/2 + 75 && mouseX <= windowWidth/2 + 125  ) {
+    } else if ( mouseX >= canvasWidth/2 + 75 && mouseX <= canvasWidth/2 + 125  ) {
       // if ( layers[curLayer][++curFrame] == undefined ) layers[curLayer][curFrame] = [];
       // console.log("insert after");
       if ( curFrame < layers[curLayer].length - 1 ) {        
         // layers[curLayer].splice((curFrame++) + 1, 0, []);
-        rect(windowWidth/2 + 75, windowHeight/2 - 250 - extraLift,50, 50)
+        rect(canvasWidth/2 + 75, canvasHeight/2 - 250 - extraLift,50, 50)
       }
     }
   }
   
   
-  if ( mouseY < windowHeight/2 - 300 && mouseY > windowHeight/2 - 340 && mouseX > windowWidth/2 - 20 && mouseX < windowWidth/2 + 20 ) {
+  if ( mouseY < canvasHeight/2 - 300 && mouseY > canvasHeight/2 - 340 && mouseX > canvasWidth/2 - 20 && mouseX < canvasWidth/2 + 20 ) {
     
-      rect(windowWidth/2 - 20, windowHeight/2 - 340,40, 40)
+      rect(canvasWidth/2 - 20, canvasHeight/2 - 340,40, 40)
   }
   
-  if ( mouseY < windowHeight/2 - 300 && mouseY > windowHeight/2 - 350 ) {
-    if ( mouseX >= windowWidth/2 - 100 && mouseX <= windowWidth/2 - 60 ) {
-      rect(windowWidth/2 - 100, windowHeight/2 - 350, 40, 50 )
+  if ( mouseY < canvasHeight/2 - 300 && mouseY > canvasHeight/2 - 350 ) {
+    if ( mouseX >= canvasWidth/2 - 100 && mouseX <= canvasWidth/2 - 60 ) {
+      rect(canvasWidth/2 - 100, canvasHeight/2 - 350, 40, 50 )
     }
-    if ( mouseX >= windowWidth/2 + 60 && mouseX <= windowWidth/2 + 90 ) {
-      rect(windowWidth/2 + 60, windowHeight/2 - 350, 30, 50 )
+    if ( mouseX >= canvasWidth/2 + 60 && mouseX <= canvasWidth/2 + 90 ) {
+      rect(canvasWidth/2 + 60, canvasHeight/2 - 350, 30, 50 )
     }
   }
 }
@@ -207,56 +248,56 @@ function drawUI() {
   
   if ( curFrame == 0 ) fill(135); else fill(50);
   var extraLift = 25;
-  triangle( windowWidth/2 - 150, windowHeight/2 - 250 - extraLift, windowWidth/2 - 200, windowHeight/2 - 225 - extraLift, windowWidth/2 - 150, windowHeight/2 - 200 - extraLift);
+  triangle( canvasWidth/2 - 150, canvasHeight/2 - 250 - extraLift, canvasWidth/2 - 200, canvasHeight/2 - 225 - extraLift, canvasWidth/2 - 150, canvasHeight/2 - 200 - extraLift);
   if ( curFrame == layers[curLayer].length-1 ) fill(135); else fill(50);
-  triangle( windowWidth/2 + 150, windowHeight/2 - 250 - extraLift, windowWidth/2 + 200, windowHeight/2 - 225 - extraLift, windowWidth/2 + 150, windowHeight/2 - 200 - extraLift);
+  triangle( canvasWidth/2 + 150, canvasHeight/2 - 250 - extraLift, canvasWidth/2 + 200, canvasHeight/2 - 225 - extraLift, canvasWidth/2 + 150, canvasHeight/2 - 200 - extraLift);
   
   // Insert Buttons  
   noFill();
   if ( curFrame == 0 ) stroke(160); else stroke(200);
   var extraLift = 25;
-  triangle( windowWidth/2 - 75, windowHeight/2 - 250 - extraLift, windowWidth/2 - 125, windowHeight/2 - 225 - extraLift, windowWidth/2 - 75, windowHeight/2 - 200 - extraLift);
-  line(windowWidth/2 - 100, windowHeight/2 - 225 - extraLift, windowWidth/2 - 80, windowHeight/2 - 225 - extraLift);
-  line(windowWidth/2 - 90, windowHeight/2 - 235 - extraLift, windowWidth/2 - 90, windowHeight/2 - 215 - extraLift);  
+  triangle( canvasWidth/2 - 75, canvasHeight/2 - 250 - extraLift, canvasWidth/2 - 125, canvasHeight/2 - 225 - extraLift, canvasWidth/2 - 75, canvasHeight/2 - 200 - extraLift);
+  line(canvasWidth/2 - 100, canvasHeight/2 - 225 - extraLift, canvasWidth/2 - 80, canvasHeight/2 - 225 - extraLift);
+  line(canvasWidth/2 - 90, canvasHeight/2 - 235 - extraLift, canvasWidth/2 - 90, canvasHeight/2 - 215 - extraLift);  
   noFill();
   if ( curFrame == layers[curLayer].length-1 ) stroke(160); else stroke(200);
   var extraLift = 25;
-  triangle( windowWidth/2 + 75, windowHeight/2 - 250 - extraLift, windowWidth/2 + 125, windowHeight/2 - 225 - extraLift, windowWidth/2 + 75, windowHeight/2 - 200 - extraLift);
-  line(windowWidth/2 + 100, windowHeight/2 - 225 - extraLift, windowWidth/2 + 80, windowHeight/2 - 225 - extraLift);
-  line(windowWidth/2 + 90, windowHeight/2 - 235 - extraLift, windowWidth/2 + 90, windowHeight/2 - 215 - extraLift);
+  triangle( canvasWidth/2 + 75, canvasHeight/2 - 250 - extraLift, canvasWidth/2 + 125, canvasHeight/2 - 225 - extraLift, canvasWidth/2 + 75, canvasHeight/2 - 200 - extraLift);
+  line(canvasWidth/2 + 100, canvasHeight/2 - 225 - extraLift, canvasWidth/2 + 80, canvasHeight/2 - 225 - extraLift);
+  line(canvasWidth/2 + 90, canvasHeight/2 - 235 - extraLift, canvasWidth/2 + 90, canvasHeight/2 - 215 - extraLift);
   
   // Delete Button
   noFill();
   stroke(50); strokeWeight(1);
   if ( layers[curLayer][curFrame].length ) fill(100);
   beginShape();
-  vertex(windowWidth/2 - 10, windowHeight/2 - 300);
-  vertex(windowWidth/2 + 10, windowHeight/2 - 300);
-  vertex(windowWidth/2 + 15, windowHeight/2 - 330);
-  vertex(windowWidth/2 - 15, windowHeight/2 - 330);
-  vertex(windowWidth/2 - 10, windowHeight/2 - 300);
+  vertex(canvasWidth/2 - 10, canvasHeight/2 - 300);
+  vertex(canvasWidth/2 + 10, canvasHeight/2 - 300);
+  vertex(canvasWidth/2 + 15, canvasHeight/2 - 330);
+  vertex(canvasWidth/2 - 15, canvasHeight/2 - 330);
+  vertex(canvasWidth/2 - 10, canvasHeight/2 - 300);
   endShape(CLOSE);
-  line(windowWidth/2 - 17, windowHeight/2 - 334, windowWidth/2 + 17, windowHeight/2 - 334);
-  // line(windowWidth/2 - 5, windowHeight/2 - 338, windowWidth/2 + 5, windowHeight/2 - 338);
+  line(canvasWidth/2 - 17, canvasHeight/2 - 334, canvasWidth/2 + 17, canvasHeight/2 - 334);
+  // line(canvasWidth/2 - 5, canvasHeight/2 - 338, canvasWidth/2 + 5, canvasHeight/2 - 338);
 
   // Timeline visualiser
   // Just a thin thing above the canvas
   noFill(); stroke(170); strokeWeight(4);
-  line(windowWidth/2 - 200, windowHeight/2 - 204, windowWidth/2 + 200, windowHeight/2 - 204);
+  line(canvasWidth/2 - 200, canvasHeight/2 - 204, canvasWidth/2 + 200, canvasHeight/2 - 204);
   stroke(80);
   var lengthSize = 400 / layers[curLayer].length;
   var start = lengthSize * curFrame;
 
-  line(windowWidth/2 - 200 + start, windowHeight/2 - 204, windowWidth/2 - 200 + start + lengthSize, windowHeight/2 - 204);
+  line(canvasWidth/2 - 200 + start, canvasHeight/2 - 204, canvasWidth/2 - 200 + start + lengthSize, canvasHeight/2 - 204);
   
   
   // Paste Button
   noFill();
   stroke(50); strokeWeight(1);
   if ( app.clipboard.length ) fill(100);
-  rect(windowWidth/2 - 100, windowHeight/2 - 350, 40, 50, 3);
-  rect(windowWidth/2 - 95, windowHeight/2 - 343, 30, 40, 3);
-  rect(windowWidth/2 - 90, windowHeight/2 - 353, 20, 6);
+  rect(canvasWidth/2 - 100, canvasHeight/2 - 350, 40, 50, 3);
+  rect(canvasWidth/2 - 95, canvasHeight/2 - 343, 30, 40, 3);
+  rect(canvasWidth/2 - 90, canvasHeight/2 - 353, 20, 6);
   
   
   // Copy Button
@@ -264,14 +305,14 @@ function drawUI() {
   stroke(50); strokeWeight(1);
   if ( app.clipboard.length ) fill(100);
   beginShape();
-  vertex(windowWidth/2 + 60, windowHeight/2 - 335);
-  vertex(windowWidth/2 + 90, windowHeight/2 - 335);
-  vertex(windowWidth/2 + 85, windowHeight/2 - 300);
-  vertex(windowWidth/2 + 65, windowHeight/2 - 300);
+  vertex(canvasWidth/2 + 60, canvasHeight/2 - 335);
+  vertex(canvasWidth/2 + 90, canvasHeight/2 - 335);
+  vertex(canvasWidth/2 + 85, canvasHeight/2 - 300);
+  vertex(canvasWidth/2 + 65, canvasHeight/2 - 300);
   endShape(CLOSE);
   
-  rect(windowWidth/2 + 55, windowHeight/2 - 340, 40, 5, 2);
-  rect(windowWidth/2 + 72, windowHeight/2 - 355, 5, 15, 2);
+  rect(canvasWidth/2 + 55, canvasHeight/2 - 340, 40, 5, 2);
+  rect(canvasWidth/2 + 72, canvasHeight/2 - 355, 5, 15, 2);
   
   
 
@@ -286,14 +327,38 @@ function drawUI() {
   if ( mouseIsPressed ) renderThisFrame = curFrame;
   
   push();
-  translate(windowWidth/2, windowHeight/2);
+  translate(canvasWidth/2, canvasHeight/2);
   scale(0.2);
-  translate(-windowWidth/2, -windowHeight/2);
+  translate(-canvasWidth/2, -canvasHeight/2);
   translate(0, -250 / 0.2);
 
   fill(255); stroke(100); strokeWeight(1);
-  rect(windowWidth/2 - 200, windowHeight/2-200, 400);
-  drawCurrentFrame(renderThisFrame, true);
+  rect(canvasWidth/2 - 200, canvasHeight/2-200, 400);
+  drawCurrentFrame(renderThisFrame, !mouseIsPressed, -1);
+  pop();
+  
+  
+  // One per layer. 3 or 4 layers?
+  push();
+  translate(canvasWidth/2, canvasHeight/2);
+  scale(0.2);
+  translate(-canvasWidth/2, -canvasHeight/2);
+  for ( var i = 0; i < 4; i++ ) {
+    push();
+    translate(-750 + i * 500, 250 / 0.2);
+    if ( i == curLayer ) {
+      fill(255);
+    } else {
+      fill(255, 255, 255, 100);
+    }
+    stroke(100); strokeWeight(1);
+    rect(canvasWidth/2 - 200, canvasHeight/2-200, 400);
+    // Draw only the target layer
+    // And only the current frame
+    // drawCurrentFrame(renderThisFrame, !mouseIsPressed);
+    drawCurrentLayer(curFrame, i)
+    pop();
+  }
   pop();
 
   
@@ -301,17 +366,33 @@ function drawUI() {
 
 function drawOnionSkin() {
   if ( app.onion == false ) return;
+}
 
-//   strokeWeight(10);
+function drawCurrentLayer(targFrame, targLayer) {
+  if ( layers[targLayer] == undefined ) return;
+  noFill();
   
-//   if ( curFrame >= 2 ) { stroke(255,0,0,10); drawCurrentFrame(curFrame-2); }
-//   if ( curFrame >= 1 ) { stroke(255,0,0,25); drawCurrentFrame(curFrame-1); }
-
-//   if ( layers[curLayer].length - curFrame > 2 ) { stroke(0,0,255,20); drawCurrentFrame(curFrame+2); }
-//   if ( layers[curLayer].length - curFrame > 1 ) { stroke(0,0,255,50); drawCurrentFrame(curFrame+1); }
+  var theFrame = layers[targLayer][targFrame];
+  
+  
+    for ( var i = 0, iL = theFrame.length; i < iL; i++ ) {
+      
+      stroke(0, 0, 0, 180 * 0.4 + (180/iL) * 0.6);
+      strokeWeight(20 * 0.6 +(20/iL) * 0.4 );
+      
+      var thisPath = theFrame[i];
+      beginShape();
+      for ( var c = 0, cL = thisPath.length-1; c < cL; c++ ) {
+        curveVertex(thisPath[c].x, thisPath[c].y);
+      }
+      endShape();
+    }
+  
 }
 
 function drawCurrentFrame(targFrame, preview) {
+  
+  // Needs to faintly draw the other layers, right?
   
   noFill();
   if ( preview == false && app.onion ) {
@@ -344,7 +425,18 @@ function drawCurrentFrame(targFrame, preview) {
   endShape();
 
   // Other Paths
-  drawThisFrame(targFrame, 0, 0, 0, 180);
+  var originalLayer = curLayer;
+  
+  for ( var n = 0; n < 4; n++ ) {
+    curLayer = n;
+    
+    if ( n == originalLayer ) {
+      drawThisFrame(targFrame, 0, 0, 0, 180);
+    } else {
+      drawThisFrame(targFrame, 100, 100, 100, 180);
+    }
+  }
+  curLayer = originalLayer;
   
   function drawThisFrame(targFrame, r, g, b, a) {
     var currentFrame = layers[curLayer][targFrame];
